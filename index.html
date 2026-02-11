@@ -154,6 +154,12 @@
             back: { img: null, rotation: 0 }
         };
 
+        // Keep track of blob URLs to revoke them and prevent memory leaks
+        const blobUrls = {
+            front: null,
+            back: null
+        };
+
         // Setup Drag and Drop
         ['Front', 'Back'].forEach(side => {
             const dropZone = document.getElementById(`dropZone${side}`);
@@ -274,17 +280,29 @@
             ctx.restore();
             // ---------------------
 
-            // Update UI
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.9); // High quality JPEG
-            previewImg.src = dataUrl;
-            previewImg.classList.remove('hidden');
-            placeholder.classList.add('hidden');
-            
-            // Setup Download
-            downloadBtn.href = dataUrl;
-            downloadBtn.download = `身分證_${side}_浮水印.jpg`;
-            downloadBtn.classList.remove('hidden');
-            downloadBtn.classList.add('inline-flex');
+            // Update UI with Blob (Fix for large files)
+            // Use toBlob instead of toDataURL to handle large files
+            canvas.toBlob(function(blob) {
+                if (!blob) return;
+
+                // Release old URL to free memory
+                if (blobUrls[side]) {
+                    URL.revokeObjectURL(blobUrls[side]);
+                }
+
+                const url = URL.createObjectURL(blob);
+                blobUrls[side] = url;
+
+                previewImg.src = url;
+                previewImg.classList.remove('hidden');
+                placeholder.classList.add('hidden');
+                
+                // Setup Download
+                downloadBtn.href = url;
+                downloadBtn.download = `身分證_${side}_浮水印.jpg`;
+                downloadBtn.classList.remove('hidden');
+                downloadBtn.classList.add('inline-flex');
+            }, 'image/jpeg', 0.9);
         }
     </script>
 </body>
