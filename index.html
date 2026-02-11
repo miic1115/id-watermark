@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>隊友身分證浮水印工具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+        }
+        .upload-box {
+            border: 2px dashed #cbd5e1;
+            transition: all 0.3s ease;
+        }
+        .upload-box:hover, .upload-box.active {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-white shadow-sm py-4">
+        <div class="container mx-auto px-4 text-center">
+            <h1 class="text-2xl font-bold text-blue-600">
+                <i class="fa-solid fa-id-card mr-2"></i>身分證浮水印製作工具
+            </h1>
+            <p class="text-sm text-gray-500 mt-1">
+                <i class="fa-solid fa-shield-halved text-green-500 mr-1"></i>
+                安全聲明：所有照片僅在您的瀏覽器本地處理，<strong>不會</strong>上傳至任何伺服器。
+            </p>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow container mx-auto px-4 py-8">
+        
+        <!-- Controls -->
+        <div class="bg-white rounded-xl shadow-md p-6 mb-8 max-w-4xl mx-auto border border-gray-100">
+            <h2 class="text-lg font-bold mb-4 border-b pb-2">浮水印設定</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">浮水印文字 (固定)</label>
+                    <input type="text" id="watermarkText" value="僅供派兜報名比賽使用" 
+                           class="w-full px-3 py-2 border border-gray-200 bg-gray-100 text-gray-500 rounded-md cursor-not-allowed focus:outline-none"
+                           readonly>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">文字顏色</label>
+                        <select id="textColor" onchange="updateAllPreviews()" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                            <option value="rgba(255, 255, 255,">白色 (深色背景用)</option>
+                            <option value="rgba(0, 0, 0," selected>黑色 (淺色背景用)</option>
+                            <option value="rgba(220, 38, 38,">紅色 (顯眼)</option>
+                            <option value="rgba(37, 99, 235,">藍色</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">透明度</label>
+                        <div class="flex items-center space-x-2">
+                            <input type="range" id="opacity" min="0.1" max="1" step="0.1" value="0.2" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" oninput="updateAllPreviews()">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-4 text-xs text-gray-500">
+                * 建議：浮水印應清晰可見，並稍微遮擋到照片與文字，以防被他人盜用修圖。
+            </div>
+        </div>
+
+        <!-- Image Process Area -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-6xl mx-auto">
+            
+            <!-- Front Side -->
+            <div class="bg-white p-6 rounded-xl shadow-md flex flex-col h-full">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-lg text-gray-700">1. 身分證正面</h3>
+                    <button onclick="document.getElementById('fileFront').click()" class="text-sm bg-blue-50 text-blue-600 px-3 py-1 rounded hover:bg-blue-100 transition">
+                        更換照片
+                    </button>
+                </div>
+                
+                <!-- Upload Area Front -->
+                <div class="relative group cursor-pointer flex-grow flex flex-col items-center justify-center bg-gray-50 upload-box rounded-lg min-h-[300px] overflow-hidden" id="dropZoneFront">
+                    <input type="file" id="fileFront" accept="image/*" class="hidden" onchange="handleFileSelect(event, 'front')">
+                    
+                    <div id="placeholderFront" class="text-center p-6">
+                        <i class="fa-solid fa-image text-4xl text-gray-300 mb-3"></i>
+                        <p class="text-gray-500 font-medium">點擊選擇或拖放<br>正面照片</p>
+                    </div>
+                    
+                    <img id="previewFront" class="hidden max-w-full max-h-[500px] object-contain shadow-sm" alt="正面預覽">
+                    <canvas id="canvasFront" class="hidden"></canvas>
+                </div>
+
+                <div class="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center">
+                    <button onclick="rotateImage('front')" id="btnRotateFront" class="text-gray-500 hover:text-gray-700 disabled:opacity-50" disabled>
+                        <i class="fa-solid fa-rotate-right mr-1"></i> 旋轉
+                    </button>
+                    <a id="downloadFront" class="hidden bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition shadow-sm items-center">
+                        <i class="fa-solid fa-download mr-2"></i> 下載正面
+                    </a>
+                </div>
+            </div>
+
+            <!-- Back Side -->
+            <div class="bg-white p-6 rounded-xl shadow-md flex flex-col h-full">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-lg text-gray-700">2. 身分證反面</h3>
+                    <button onclick="document.getElementById('fileBack').click()" class="text-sm bg-blue-50 text-blue-600 px-3 py-1 rounded hover:bg-blue-100 transition">
+                        更換照片
+                    </button>
+                </div>
+                
+                <!-- Upload Area Back -->
+                <div class="relative group cursor-pointer flex-grow flex flex-col items-center justify-center bg-gray-50 upload-box rounded-lg min-h-[300px] overflow-hidden" id="dropZoneBack">
+                    <input type="file" id="fileBack" accept="image/*" class="hidden" onchange="handleFileSelect(event, 'back')">
+                    
+                    <div id="placeholderBack" class="text-center p-6">
+                        <i class="fa-solid fa-image text-4xl text-gray-300 mb-3"></i>
+                        <p class="text-gray-500 font-medium">點擊選擇或拖放<br>反面照片</p>
+                    </div>
+                    
+                    <img id="previewBack" class="hidden max-w-full max-h-[500px] object-contain shadow-sm" alt="反面預覽">
+                    <canvas id="canvasBack" class="hidden"></canvas>
+                </div>
+
+                <div class="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center">
+                    <button onclick="rotateImage('back')" id="btnRotateBack" class="text-gray-500 hover:text-gray-700 disabled:opacity-50" disabled>
+                        <i class="fa-solid fa-rotate-right mr-1"></i> 旋轉
+                    </button>
+                    <a id="downloadBack" class="hidden bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition shadow-sm items-center">
+                        <i class="fa-solid fa-download mr-2"></i> 下載反面
+                    </a>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <footer class="bg-white border-t py-6 text-center text-gray-500 text-sm">
+        <p>© 2024 僅供內部隊友使用</p>
+    </footer>
+
+    <script>
+        // Store original images to prevent quality loss on re-render
+        const originalImages = {
+            front: { img: null, rotation: 0 },
+            back: { img: null, rotation: 0 }
+        };
+
+        // Setup Drag and Drop
+        ['Front', 'Back'].forEach(side => {
+            const dropZone = document.getElementById(`dropZone${side}`);
+            const fileInput = document.getElementById(`file${side}`);
+
+            dropZone.addEventListener('click', (e) => {
+                // Prevent clicking on the preview image from triggering the file input again if not intended
+                if(e.target.tagName !== 'IMG') {
+                    fileInput.click();
+                }
+            });
+
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('active');
+            });
+
+            dropZone.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('active');
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('active');
+                if (e.dataTransfer.files.length > 0) {
+                    fileInput.files = e.dataTransfer.files;
+                    // Trigger change event manually
+                    const event = new Event('change');
+                    fileInput.dispatchEvent(event);
+                }
+            });
+        });
+
+        function handleFileSelect(event, side) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    originalImages[side].img = img;
+                    originalImages[side].rotation = 0; // Reset rotation
+                    document.getElementById(`btnRotate${side.charAt(0).toUpperCase() + side.slice(1)}`).disabled = false;
+                    processImage(side);
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function rotateImage(side) {
+            if (!originalImages[side].img) return;
+            originalImages[side].rotation = (originalImages[side].rotation + 90) % 360;
+            processImage(side);
+        }
+
+        function updateAllPreviews() {
+            if (originalImages.front.img) processImage('front');
+            if (originalImages.back.img) processImage('back');
+        }
+
+        function processImage(side) {
+            const imgObj = originalImages[side];
+            if (!imgObj.img) return;
+
+            const canvas = document.getElementById(`canvas${side.charAt(0).toUpperCase() + side.slice(1)}`);
+            const ctx = canvas.getContext('2d');
+            const previewImg = document.getElementById(`preview${side.charAt(0).toUpperCase() + side.slice(1)}`);
+            const placeholder = document.getElementById(`placeholder${side.charAt(0).toUpperCase() + side.slice(1)}`);
+            const downloadBtn = document.getElementById(`download${side.charAt(0).toUpperCase() + side.slice(1)}`);
+
+            // Handle Rotation Dimensions
+            const rotation = imgObj.rotation;
+            const isRotated90or270 = rotation === 90 || rotation === 270;
+            
+            // Set canvas size to match original image resolution
+            canvas.width = isRotated90or270 ? imgObj.img.height : imgObj.img.width;
+            canvas.height = isRotated90or270 ? imgObj.img.width : imgObj.img.height;
+
+            // Clear and Rotate Context
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+            
+            // Move context to center
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+            ctx.rotate(rotation * Math.PI / 180);
+            ctx.drawImage(imgObj.img, -imgObj.img.width / 2, -imgObj.img.height / 2);
+            ctx.restore();
+
+            // --- Draw Watermark ---
+            const text = document.getElementById('watermarkText').value || "僅供派兜報名比賽使用";
+            const colorBase = document.getElementById('textColor').value;
+            const opacity = document.getElementById('opacity').value;
+            
+            ctx.font = `bold ${canvas.width / 15}px 'Noto Sans TC', sans-serif`; // Responsive font size
+            ctx.fillStyle = `${colorBase} ${opacity})`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            // Tiled Pattern Logic
+            ctx.save();
+            ctx.rotate(-45 * Math.PI / 180); // Diagonal text
+
+            const diagLength = Math.sqrt(canvas.width * canvas.width + canvas.height * canvas.height);
+            const stepX = ctx.measureText(text).width * 1.5; // Horizontal spacing
+            const stepY = canvas.width / 5; // Vertical spacing
+
+            // Create a large enough grid to cover the rotated canvas
+            for (let y = -diagLength; y < diagLength; y += stepY) {
+                for (let x = -diagLength; x < diagLength; x += stepX) {
+                    // Add offset to every other line for brick pattern
+                    const offsetX = (Math.floor(y / stepY) % 2 === 0) ? 0 : stepX / 2;
+                    ctx.fillText(text, x + offsetX, y);
+                }
+            }
+            ctx.restore();
+            // ---------------------
+
+            // Update UI
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.9); // High quality JPEG
+            previewImg.src = dataUrl;
+            previewImg.classList.remove('hidden');
+            placeholder.classList.add('hidden');
+            
+            // Setup Download
+            downloadBtn.href = dataUrl;
+            downloadBtn.download = `身分證_${side}_浮水印.jpg`;
+            downloadBtn.classList.remove('hidden');
+            downloadBtn.classList.add('inline-flex');
+        }
+    </script>
+</body>
+</html>
